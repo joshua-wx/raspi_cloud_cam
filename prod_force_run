@@ -1,0 +1,9 @@
+﻿#! /bin/bash
+
+if [ -f force_flag ]; then
+	rm -f force_flag
+	echo "Webcam checking start stop times"
+else
+	touch force_flag
+	echo "Webcam ignoring start stop times"
+fi

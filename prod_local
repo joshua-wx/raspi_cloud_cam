@@ -1,0 +1,9 @@
+#! /bin/bash
+
+if [ -f local_flag ]; then
+	rm -f local_flag
+	echo "NO local save"
+else
+	touch local_flag
+	echo "local save started"
+fi

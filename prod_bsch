@@ -1,0 +1,9 @@
+#! /bin/bash
+
+if [ -f bsch_flag ]; then
+	rm -f bsch_flag
+	echo "NO bsch upload"
+else
+	touch bsch_flag
+	echo "bsch upload started"
+fi

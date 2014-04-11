@@ -1,0 +1,225 @@
+#! /bin/bash
+
+# Define fetch options function
+fetch_options(){
+	#remove existing options file
+	rm -f options.txt
+	#fetch new options file
+	wget "http://webcams.bsch.au.com/"$site_name"/options.txt"
+	#Remove flipping hidden \r endline characters
+	sed -i 's/\r$//' options.txt
+	#add local vars
+	while read line
+	do
+		IFS="^" read name value <<< "$line"
+		if [ -n "$value" ]
+		then
+	 		declare -g "$name"="$value"
+		fi
+	done < options.txt
+	#transform image sizes into array
+	#IFS="|" image_sizes=($image_sizes)
+}
+
+# Define custom_time (seconds from Z=0)
+custom_time(){
+	c_time=$(($(date -u +%s) - $(date -u -d "$(date -u +00:00)" +%s)))
+}
+
+ftp_upload(){
+	ftp -inv $ftp_server <<EOD
+	binary
+	user $ftp_login $ftp_pass
+	cd $remote_ftp_path
+	put $site_name".zip"
+	quit
+EOD
+	#remove zip locally
+	rm -f *.zip
+}
+
+##########
+# Main Function
+
+#Update system time
+sudo htpdate -s www.bom.gov.au
+
+# Define global vars
+
+#site name for ftp
+site_name="melbourne_docklands"
+#path to local archive root
+local_path="/media/WEBCAM_HDD/images"
+#webcam capture interval
+capture_interval=5000 #milli seconds
+#no image reboot interval
+reboot_interval=30
+#bsch upload interval
+bsch_interval=30
+#update options interval
+options_update_interval=120
+#webcam awake/asleep switch
+run_webcam=0
+#switch for local archive auto clean
+auto_local_clean=1
+#start auto clean 
+start_auto_clean=0
+#local archive auto clean oldest foler age
+max_local_archive_days="+5"
+#ftp_timeout
+ftp_timeout=4
+
+#remove any local temp files
+rm -f *.jpg
+rm -f *.zip
+
+#turn switch files on (exist)
+touch kill_script
+touch bsch_flag
+touch local_flag
+
+#load options.txt from bsch
+sleep 5
+fetch_options
+
+#load time from last zulu 00Z
+custom_time
+
+#time in seconds since epoch and set time variables
+unix_time=$(date +"%s")
+last_bsch_time=$unix_time
+last_options_update_time=$unix_time
+last_local_time=$unix_time
+
+#infinite loop
+while [ -f kill_script ]; do
+	#update current unix time and custom time
+	custom_time
+	unix_time=$(date +"%s")
+
+	#check for need to update options list
+	if [ $(expr "$unix_time" - "$last_options_update_time") -ge $options_update_interval ]; then
+		#update options file
+		echo "updating options"
+		fetch_options
+		#update options load time
+		last_options_update_time=$unix_time
+	fi
+
+	#check if time between last local clean is greatther than the max interval and auto clean is switched on
+	if [ "$start_auto_clean" -eq 1 ]; then
+		#turn off start auto clean
+		start_auto_clean=0
+		if [ "$auto_local_clean" -eq 1 ]; then
+			#find and delete old folders as a background process
+			echo "starting auto clean, please wait until finished"
+			find $local_path -type d -mtime $max_local_archive_days -exec rm -Rf {} \;
+		fi
+		echo "rebooting computer after archive clean"
+		sudo shutdown -r now
+	fi
+
+	#check if daytime or force flag is present
+	if [ "$c_time" -le "$stop_time_day" -o "$c_time" -ge $(expr "$start_time_day" + 60 \* 60 \* 24) -o -f force_flag ]; then
+		#webcam active
+		run_webcam=1
+		touch webcam_running_flag
+	else
+		#disable webcam
+		run_webcam=0
+		if [ -f webcam_running_flag ]; then
+			start_auto_clean=1
+			rm webcam_running_flag
+		fi
+	fi
+	
+	#webcam capture script
+	if [ "$run_webcam" -eq 1 ]; then
+		#trigger webcam capture
+		raspistill \
+			--width 1920 \
+			--height 1080 \
+			--sharpness 30 \
+			--contrast 8 \
+			--brightness 48 \
+			--ISO 100 \
+			--ev 2 \
+			--quality 85 \
+			--saturation 5 \
+			--awb sun \
+			--output /tmp/image.jpg
+		#check if new image file exists
+		if [ -e /tmp/image.jpg ]; then
+			echo "new picture found"
+			mv /tmp/image.jpg image.jpg
+			#check if mv failed: read only filesystem!
+			if [ ! -f image.jpg ]; then
+				echo "rebooting computer read only file system"
+				sudo shutdown -r now
+			fi
+			#check if local save is flaged
+			if [ -f local_flag ]; then
+				echo "saving to HDD"
+				#create date strings
+				fn=$(date +"%Y%m%d%H%M%S")
+				fn_folder=$(date +"%Y%m%d%H")
+				#check if dir needs to be created
+				if [ ! -d $local_path"/"$fn_folder ]; then
+					mkdir $local_path"/"$fn_folder
+				fi
+				#move to archive
+				cp image.jpg $local_path"/"$fn_folder"/"$fn".jpg"
+			fi
+			#check if upload to bsch is required
+			if [ $(expr "$unix_time" - "$last_bsch_time") -ge $bsch_interval -a -f bsch_flag ]; then
+				echo "uploading to bsch"
+				#update last_bsch_time
+				last_bsch_time=$unix_time
+				#resize and annotate images
+
+				echo "convert to 980x553"
+				eval $system_image_980x734_magick_command
+
+				echo "convert to 760x430"				
+				eval $system_image_760x570_magick_command
+
+				echo "convert to 640x362"
+				eval $system_image_640x480_magick_command			
+				
+				echo "convert to 370x277"
+				eval $system_image_370x277_magick_command				
+				
+				#zip images
+				zip $site_name".zip" *x*.jpg
+				#ftp images
+				ftp_upload &
+				ftp_timer=0
+				while [ -f $site_name".zip" ]; do
+					sleep 1
+					ftp_timer=$(expr "$ftp_timer" + 1)
+					if [ $ftp_timer -ge $ftp_timeout ]; then
+						ftp_timer=0
+						killall ftp
+						ftp_upload &
+					fi
+				done
+				#poke server
+				curl -s $process_images_url"?cam="$site_name > /dev/null
+			fi
+			#remove all images in local folder			
+			rm -f *.jpg
+			#update last save time
+			last_local_time=$unix_time
+		elif [ $(expr "$unix_time" - "$last_local_time") -ge $reboot_interval ]; then
+			#no images recently, so killall and reboot computer
+			echo "rebooting computer"
+			sudo shutdown -r now
+		else
+			echo "no new image detected, sleeping for 1 seconds"
+			sleep 1
+		fi
+	fi
+done
+
+#while loop broken, kill capture background processes
+echo "webcam software halted"
