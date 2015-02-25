@@ -139,14 +139,14 @@ while [ -f kill_script ]; do
 		raspistill \
 			--width 1920 \
 			--height 1080 \
-			--sharpness 30 \
-			--contrast 8 \
-			--brightness 48 \
+			--sharpness 60 \
+			--contrast 35 \
+			--brightness 58 \
 			--ISO 100 \
-			--ev 2 \
 			--quality 85 \
-			--saturation 5 \
-			--awb sun \
+			--saturation 0 \
+			--awb off \
+			-awbg 1.55,1.25 \
 			--output /tmp/image.jpg
 		#check if new image file exists
 		if [ -e /tmp/image.jpg ]; then

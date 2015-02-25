@@ -1,6 +1,7 @@
 UPDATES
 
 11/4/14: Added htpupdate command to config file wget loop. Changed camera settings to default.
+25/2/15: Updated raspistill setting to match Ben Quinns code
 
 #############################################3
 

@@ -65,7 +65,7 @@ auto_local_clean=1
 #start auto clean 
 start_auto_clean=0
 #local archive auto clean oldest foler age
-max_local_archive_days="+5"
+max_local_archive_days="+3"
 #ftp_timeout
 ftp_timeout=4
 
