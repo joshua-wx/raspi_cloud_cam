@@ -1,11 +1,14 @@
 #! /bin/bash
+#Joshua Soderholm, Feb 2016
+#Climate Research Group, University of Queensland
+#Written for BSCH webcam network (Ben Quinn)
 
 # Define fetch options function
 fetch_options(){
 	#remove existing options file
 	rm -f options.txt
 	#fetch new options file
-	wget "http://webcams.bsch.au.com/"$site_name"/options.txt"
+	wget "http://webcams.bsch.com.au/"$site_name"/options.txt"
 	#Remove flipping hidden \r endline characters
 	sed -i 's/\r$//' options.txt
 	#add local vars
@@ -27,9 +30,8 @@ custom_time(){
 }
 
 ftp_upload(){
-	ftp -inv $ftp_server <<EOD
-	binary
-	user $ftp_login $ftp_pass
+	ftp -v -inv -p wcpassthru.bsch.com.au <<EOD
+	user wcpassthru@stormcast.com.au WeathercamNetwork123
 	cd $remote_ftp_path
 	put $site_name".zip"
 	quit
@@ -37,6 +39,19 @@ EOD
 	#remove zip locally
 	rm -f *.zip
 }
+
+#Old ftp function
+#ftp_upload(){
+#	ftp -invp $ftp_server <<EOD
+#	binary
+#	user $ftp_login $ftp_pass
+#	cd $remote_ftp_path
+#	put $site_name".zip"
+#	quit
+#EOD
+#	#remove zip locally
+#	rm -f *.zip
+#}
 
 ##########
 # Main Function
@@ -137,6 +152,7 @@ while [ -f kill_script ]; do
 	if [ "$run_webcam" -eq 1 ]; then
 		#trigger webcam capture
 		raspistill \
+			--nopreview \
 			--width 1920 \
 			--height 1080 \
 			--sharpness 60 \
@@ -146,7 +162,7 @@ while [ -f kill_script ]; do
 			--quality 85 \
 			--saturation 0 \
 			--awb off \
-			-awbg 1.55,1.25 \
+			-awbg 1.75,1.25 \
 			--output /tmp/image.jpg
 		#check if new image file exists
 		if [ -e /tmp/image.jpg ]; then
