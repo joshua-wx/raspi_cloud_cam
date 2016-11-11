@@ -1,0 +1,12 @@
+In the file /usr/sbin/captureWeathercamUpload
+
+curl -T ${filename} ftp://upload1.weathercamnetwork.com.au/${cameraPi}.zip --user wcnetworkupload1:WeathercamNetwork123 --connect-timeout 30 --max-time 60
+
+        wgetResult=$(wget -qO- "http://monitor.bsch.com.au/pi/download.and.unzip.php?cam=${cameraPi}&date=${currentTime}&uploadServer=upload1")
+        
+        
+        You should see where those two lines are - about half way down
+        
+        The host got the shits with all of the FTP connections... next
+        
+        Then just reboot and it should come good

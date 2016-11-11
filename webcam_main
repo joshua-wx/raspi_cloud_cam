@@ -30,12 +30,14 @@ custom_time(){
 }
 
 ftp_upload(){
-	ftp -invp $ftp_server <<EOD
-	user $ftp_login $ftp_pass
-	cd $remote_ftp_path
-	put $site_name".zip"
-	quit
-EOD
+	curl -T ${site_name}.zip ftp://upload1.weathercamnetwork.com.au/${site_name}.zip --user wcnetworkupload1:WeathercamNetwork123 --connect-timeout 30 --max-time 60
+	wgetResult=$(wget -qO- "http://monitor.bsch.com.au/pi/download.and.unzip.php?cam=${site_name}&date=$(date +"%Y%m%d%H%M%S")&uploadServer=upload1")
+#	ftp -invp $ftp_server <<EOD
+#	user $ftp_login $ftp_pass
+#	cd $remote_ftp_path
+#	put $site_name".zip"
+#	quit
+#EOD
 	#remove zip locally
 	rm -f *.zip
 }
@@ -77,7 +79,7 @@ options_update_interval=120
 run_webcam=0
 #switch for local archive auto clean
 auto_local_clean=1
-#start auto clean 
+#start auto clean
 start_auto_clean=0
 #local archive auto clean oldest foler age
 max_local_archive_days="+3"
@@ -147,7 +149,7 @@ while [ -f kill_script ]; do
 			rm webcam_running_flag
 		fi
 	fi
-	
+
 	#webcam capture script
 	if [ "$run_webcam" -eq 1 ]; then
 		#trigger webcam capture
@@ -196,15 +198,15 @@ while [ -f kill_script ]; do
 				echo "convert to 980x553"
 				eval $system_image_980x734_magick_command
 
-				echo "convert to 760x430"				
+				echo "convert to 760x430"
 				eval $system_image_760x570_magick_command
 
 				echo "convert to 640x362"
-				eval $system_image_640x480_magick_command			
-				
+				eval $system_image_640x480_magick_command
+
 				echo "convert to 370x277"
-				eval $system_image_370x277_magick_command				
-				
+				eval $system_image_370x277_magick_command
+
 				#zip images
 				zip $site_name".zip" *x*.jpg
 				#ftp images
@@ -222,7 +224,7 @@ while [ -f kill_script ]; do
 				#poke server
 				curl -s $process_images_url"?cam="$site_name > /dev/null
 			fi
-			#remove all images in local folder			
+			#remove all images in local folder
 			rm -f *.jpg
 			#update last save time
 			last_local_time=$unix_time
