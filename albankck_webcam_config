@@ -1,0 +1,55 @@
+#####raspi-config#######
+
+
+username: pi
+password: roofweatherweb
+hostname: albanyck-picam
+local: US keyobard, Brisbane
+enable ssh and camera and expand file system
+
+#####wifi config########
+
+/etc/wpa_supplicant/wpa_supplicant.conf
+
+`
+#Your wpa_supplicant.conf file
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+ 
+network={
+ssid="your network name"
+psk=" Password."
+}
+`
+
+/etc/network/interfaces
+
+`
+#your network interfaces file
+ 
+auto lo
+iface lo inet loopback
+ 
+auto eth0
+iface eth0 inet dhcp
+ 
+allow-hotplug wlan0
+auto wlan0
+iface wlan0 inet manual
+wpa-roam /etc/wpa_supplicant/wpa_supplicant.conf
+ 
+iface default inet static
+address 10.1.1.40
+netmask 255.255.255.0
+gateway 10.1.1.1
+`
+
+###update####
+
+restart, apt-get update && upgrade
+
+test camera raspistill -o cam.jpg
+
+###wunderground configure
+https://vk7hse.org/weather-underground-webcam/
+
