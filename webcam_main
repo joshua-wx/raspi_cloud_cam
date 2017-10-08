@@ -68,7 +68,7 @@ site_name="melbourne_docklands"
 #path to local archive root
 local_path="/media/WEBCAM_HDD/images"
 #webcam capture interval
-capture_interval=5000 #milli seconds
+capture_interval=5 #seconds
 #no image reboot interval
 reboot_interval=30
 #bsch upload interval
@@ -110,6 +110,9 @@ last_local_time=$unix_time
 
 #infinite loop
 while [ -f kill_script ]; do
+
+	sleep $capture_interval
+
 	#update current unix time and custom time
 	custom_time
 	unix_time=$(date +"%s")
