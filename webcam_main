@@ -29,7 +29,7 @@ custom_time(){
 	c_time=$(($(date -u +%s) - $(date -u -d "$(date -u +00:00)" +%s)))
 }
 
-ftp_upload(){
+curl_upload(){
 	curl -T ${site_name}.zip ftp://upload1.weathercamnetwork.com.au/${site_name}.zip --user wcnetworkupload1:WeathercamNetwork123 --connect-timeout 30 --max-time 60
 	wgetResult=$(wget -qO- "http://monitor.bsch.com.au/pi/download.and.unzip.php?cam=${site_name}&date=$(date +"%Y%m%d%H%M%S")&uploadServer=upload1")
 #	ftp -invp $ftp_server <<EOD
@@ -68,7 +68,7 @@ site_name="melbourne_docklands"
 #path to local archive root
 local_path="/media/WEBCAM_HDD/images"
 #webcam capture interval
-capture_interval=5 #seconds
+capture_interval=10 #seconds
 #no image reboot interval
 reboot_interval=30
 #bsch upload interval
@@ -82,9 +82,9 @@ auto_local_clean=1
 #start auto clean
 start_auto_clean=0
 #local archive auto clean oldest foler age
-max_local_archive_days="+3"
+max_local_archive_days="+2"
 #ftp_timeout
-ftp_timeout=10
+curl_timeout=10
 
 #remove any local temp files
 rm -f *.jpg
@@ -92,8 +92,8 @@ rm -f *.zip
 
 #turn switch files on (exist)
 touch kill_script
-touch bsch_flag
-touch local_flag
+#touch bsch_flag
+#touch local_flag
 
 #load options.txt from bsch
 sleep 5
@@ -213,15 +213,15 @@ while [ -f kill_script ]; do
 				#zip images
 				zip $site_name".zip" *x*.jpg
 				#ftp images
-				ftp_upload &
-				ftp_timer=0
+				curl_upload &
+				curl_timer=0
 				while [ -f $site_name".zip" ]; do
 					sleep 1
-					ftp_timer=$(expr "$ftp_timer" + 1)
-					if [ $ftp_timer -ge $ftp_timeout ]; then
-						ftp_timer=0
-						killall ftp
-						ftp_upload &
+					curl_timer=$(expr "$curl_timer" + 1)
+					if [ $curl_timer -ge $curl_timeout ]; then
+						curl_timer=0
+						killall curl
+						curl_upload &
 					fi
 				done
 				#poke server
